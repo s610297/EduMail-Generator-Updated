@@ -8,24 +8,35 @@
       body { font-family: Arial, sans-serif; margin: 24px; background: #f7f8fa; color: #1e1e1e; }
       .container { display: flex; gap: 24px; flex-wrap: wrap; }
       .panel { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); min-width: 320px; flex: 1; }
-      form { display: flex; gap: 10px; flex-wrap: wrap; }
+      form { display: flex; gap: 10px; flex-wrap: wrap; flex-direction: column; }
+      .form-row { display: flex; gap: 10px; }
       input, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #d9dfe8; }
       button { background: #1f6feb; color: white; border: none; cursor: pointer; }
       .inbox-card { border: 1px solid #e3e7ee; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
       .message { border-top: 1px solid #eaeaea; padding-top: 12px; margin-top: 12px; }
       .meta { font-size: 12px; color: #666; }
-      pre { white-space: pre-wrap; }
+      pre { white-space: pre-wrap; word-wrap: break-word; }
       #messages { margin-top: 20px; }
+      .info-box { background: #f0f8ff; padding: 10px; border-left: 4px solid #1f6feb; margin: 10px 0; }
     </style>
   </head>
   <body>
     <h1>Local Mail Sandbox</h1>
+    <div class="info-box">Current Domain: <strong id="domain-display">local.test</strong></div>
+
     <div class="container">
       <div class="panel">
         <h2>Create Inbox</h2>
         <form id="create-form">
-          <input id="alias" type="text" placeholder="Type alias (optional)" />
-          <button id="create-inbox" type="submit">Create Inbox</button>
+          <div>
+            <label>Alias (optional)</label>
+            <input id="alias" type="text" placeholder="e.g., john123" />
+          </div>
+          <div>
+            <label>Domain (optional)</label>
+            <input id="domain" type="text" placeholder="e.g., mycompany.com" />
+          </div>
+          <button type="submit">Create Inbox</button>
         </form>
         <div id="status" style="margin-top: 12px;"></div>
       </div>
@@ -53,7 +64,15 @@
       const inboxInfoEl = document.getElementById('inbox-info');
       const msgActions = document.getElementById('msg-actions');
       const otpCodeEl = document.getElementById('otp-code');
+      const domainDisplay = document.getElementById('domain-display');
       let selectedInboxId = null;
+
+      async function loadConfig() {
+        const response = await fetch('/api/config');
+        const config = await response.json();
+        domainDisplay.textContent = config.domain;
+        document.getElementById('domain').placeholder = `e.g., ${config.domain}`;
+      }
 
       async function loadInboxes() {
         const response = await fetch('/api/inboxes');
@@ -70,6 +89,7 @@
           card.className = 'inbox-card';
           card.innerHTML = `
             <strong>${inbox.email}</strong><br>
+            <small>Created: ${inbox.created_at}</small><br>
             <button type="button" data-id="${inbox.id}">Open</button>
           `;
           const btn = card.querySelector('button');
@@ -85,6 +105,7 @@
         inboxInfoEl.innerHTML = `
           <div id="inbox-id">Inbox ID: ${data.id}</div>
           <div><strong>Email:</strong> ${data.email}</div>
+          <div><small>Domain: ${data.domain}</small></div>
         `;
         msgActions.style.display = 'block';
         messagesEl.innerHTML = '';
@@ -109,10 +130,11 @@
       document.getElementById('create-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const alias = document.getElementById('alias').value.trim();
+        const domain = document.getElementById('domain').value.trim();
         const response = await fetch('/api/inbox', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ alias })
+          body: JSON.stringify({ alias, domain })
         });
 
         const result = await response.json();
@@ -125,6 +147,7 @@
         statusEl.textContent = `Inbox created: ${result.email}`;
         statusEl.style.color = 'green';
         document.getElementById('alias').value = '';
+        document.getElementById('domain').value = '';
         await loadInboxes();
         await openInbox(result.id);
       });
@@ -137,6 +160,7 @@
         await openInbox(selectedInboxId);
       });
 
+      loadConfig();
       loadInboxes();
     </script>
   </body>
