@@ -1,15 +1,19 @@
-# Selenium Demo Starter
+# Local Temporary Mail Sandbox
 
-This repository contains a safe, local-only Selenium example for learning browser automation.
+This project is a local-only mock email inbox & OTP demo.
 
-What it includes:
-- A tiny local Flask app with a sample form
-- A Selenium script that opens the app, fills in the form, and submits it
-- A simple setup guide for local testing
+It is intended for learning, testing web UI flows, and browser automation in a sandbox.
+It does not connect to any external service, real email provider, or production registration system.
 
-This project is intended for educational and testing purposes only. It does not target real production services, bypass account protections, evade CAPTCHAs, or automate unauthorized access.
+## Features
 
-## Setup
+- Create a random temporary inbox like `user123@local.test`
+- View inbox messages locally
+- Trigger OTP generation for testing
+- Simple web UI
+- Selenium automation example
+
+## Local run
 
 ```bash
 python -m venv .venv
@@ -19,18 +23,16 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Then open the browser automation script:
-
-```bash
-python selenium_template.py
-```
-
-The app will run locally in the browser at:
+Then open:
 
 - http://localhost:5000
 
-## Files
+You can also run the browser automation sample:
 
-- `app.py` – local demo form app
-- `selenium_template.py` – Selenium automation example
-- `requirements.txt` – Python dependencies
+```bash
+python selenium_demo.py
+```
+
+## Notes
+
+This is a sandbox-only project for testing and educational purposes.

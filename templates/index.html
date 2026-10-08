@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Local Mail Sandbox</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 24px; background: #f7f8fa; color: #1e1e1e; }
+      .container { display: flex; gap: 24px; flex-wrap: wrap; }
+      .panel { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); min-width: 320px; flex: 1; }
+      form { display: flex; gap: 10px; flex-wrap: wrap; }
+      input, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #d9dfe8; }
+      button { background: #1f6feb; color: white; border: none; cursor: pointer; }
+      .inbox-card { border: 1px solid #e3e7ee; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+      .message { border-top: 1px solid #eaeaea; padding-top: 12px; margin-top: 12px; }
+      .meta { font-size: 12px; color: #666; }
+      pre { white-space: pre-wrap; }
+      #messages { margin-top: 20px; }
+    </style>
+  </head>
+  <body>
+    <h1>Local Mail Sandbox</h1>
+    <div class="container">
+      <div class="panel">
+        <h2>Create Inbox</h2>
+        <form id="create-form">
+          <input id="alias" type="text" placeholder="Type alias (optional)" />
+          <button id="create-inbox" type="submit">Create Inbox</button>
+        </form>
+        <div id="status" style="margin-top: 12px;"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Inbox List</h2>
+        <div id="inboxes"></div>
+      </div>
+
+      <div class="panel" style="flex: 2; min-width: 420px;">
+        <h2>Messages</h2>
+        <div id="inbox-info"></div>
+        <div id="msg-actions" style="margin-top: 12px; display: none;">
+          <button id="send-otp" type="button">Generate OTP</button>
+        </div>
+        <div id="otp-code" style="margin-top: 12px; font-weight: bold;"></div>
+        <div id="messages"></div>
+      </div>
+    </div>
+
+    <script>
+      const inboxesEl = document.getElementById('inboxes');
+      const statusEl = document.getElementById('status');
+      const messagesEl = document.getElementById('messages');
+      const inboxInfoEl = document.getElementById('inbox-info');
+      const msgActions = document.getElementById('msg-actions');
+      const otpCodeEl = document.getElementById('otp-code');
+      let selectedInboxId = null;
+
+      async function loadInboxes() {
+        const response = await fetch('/api/inboxes');
+        const data = await response.json();
+        inboxesEl.innerHTML = '';
+
+        if (!data.length) {
+          inboxesEl.innerHTML = '<p>No inboxes yet.</p>';
+          return;
+        }
+
+        for (const inbox of data) {
+          const card = document.createElement('div');
+          card.className = 'inbox-card';
+          card.innerHTML = `
+            <strong>${inbox.email}</strong><br>
+            <button type="button" data-id="${inbox.id}">Open</button>
+          `;
+          const btn = card.querySelector('button');
+          btn.onclick = () => openInbox(inbox.id);
+          inboxesEl.appendChild(card);
+        }
+      }
+
+      async function openInbox(id) {
+        selectedInboxId = id;
+        const response = await fetch(`/api/inbox/${id}`);
+        const data = await response.json();
+        inboxInfoEl.innerHTML = `
+          <div id="inbox-id">Inbox ID: ${data.id}</div>
+          <div><strong>Email:</strong> ${data.email}</div>
+        `;
+        msgActions.style.display = 'block';
+        messagesEl.innerHTML = '';
+
+        if (!data.messages.length) {
+          messagesEl.innerHTML = '<p>No messages yet.</p>';
+          return;
+        }
+
+        for (const msg of data.messages) {
+          const block = document.createElement('div');
+          block.className = 'message';
+          block.innerHTML = `
+            <div class="meta">From: ${msg.sender} | ${msg.created_at}</div>
+            <div><strong>${msg.subject}</strong></div>
+            <pre>${msg.body}</pre>
+          `;
+          messagesEl.appendChild(block);
+        }
+      }
+
+      document.getElementById('create-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const alias = document.getElementById('alias').value.trim();
+        const response = await fetch('/api/inbox', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ alias })
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          statusEl.textContent = result.error || 'Error creating inbox';
+          statusEl.style.color = 'crimson';
+          return;
+        }
+
+        statusEl.textContent = `Inbox created: ${result.email}`;
+        statusEl.style.color = 'green';
+        document.getElementById('alias').value = '';
+        await loadInboxes();
+        await openInbox(result.id);
+      });
+
+      document.getElementById('send-otp').addEventListener('click', async () => {
+        if (!selectedInboxId) return;
+        const response = await fetch(`/api/send-otp/${selectedInboxId}`, { method: 'POST' });
+        const data = await response.json();
+        otpCodeEl.textContent = `OTP: ${data.otp}`;
+        await openInbox(selectedInboxId);
+      });
+
+      loadInboxes();
+    </script>
+  </body>
+</html>
